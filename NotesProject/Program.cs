@@ -7,6 +7,13 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Swashbuckle.AspNetCore.Filters;
 using MongoDB.Driver;
+using NotesProject;
+using Microsoft.AspNetCore.Identity.MongoDB;
+using Microsoft.AspNetCore.Identity;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using AspNetCore.Identity.MongoDbCore.Infrastructure;
+using AspNetCore.Identity.MongoDbCore.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +42,64 @@ builder.Services.AddCors(options => options.AddPolicy(name: "NgOrigins",
         policy.WithOrigins( "http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
     }
     ));
+
+
+BsonSerializer.RegisterSerializer(new GuidSerializer(MongoDB.Bson.BsonType.String));
+BsonSerializer.RegisterSerializer(new DateTimeSerializer(MongoDB.Bson.BsonType.String));
+BsonSerializer.RegisterSerializer(new DateTimeOffsetSerializer(MongoDB.Bson.BsonType.String));
+
+//Adding identity for mongo
+var mongoDbIdentityConfig = new MongoDbIdentityConfiguration
+{
+    MongoDbSettings = new MongoDbSettings
+    {
+        ConnectionString = "MongoURI"
+    },
+    IdentityOptionsAction = options =>
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireLowercase = false;
+
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromHours(1);
+        options.Lockout.MaxFailedAccessAttempts = 10;
+
+
+
+        options.User.RequireUniqueEmail = true;
+    }
+};
+
+//service for mongodb
+builder.Services.ConfigureMongoDbIdentity<ApplicationUser, ApplicationRole, Guid>(mongoDbIdentityConfig)
+    .AddUserManager<UserManager<ApplicationUser>>()
+    .AddSignInManager<SignInManager<ApplicationUser>>()
+    .AddRoleManager<RoleManager<ApplicationRole>>()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddAuthentication(x =>
+{
+    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+
+}).AddJwtBearer(x =>
+{
+    x.RequireHttpsMetadata = true;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidIssuer = "Https://localhost:4200",
+        ValidAudience = "Https://localhost:4200",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1!@4dst")),
+        ClockSkew = TimeSpan.Zero,
+    };
+});
+
 builder.Services.AddSingleton<IMongoClient, MongoClient>(s =>
 {
     var Uri = s.GetRequiredService<IConfiguration>()["MongoURI"];
@@ -51,7 +116,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("NgOrigins");
 app.UseHttpsRedirection();
 app.UseAuthorization();
-
+app.UseAuthentication();
 app.MapControllers();
 
 app.Run();
