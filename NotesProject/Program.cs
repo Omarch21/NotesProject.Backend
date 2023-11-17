@@ -53,7 +53,8 @@ var mongoDbIdentityConfig = new MongoDbIdentityConfiguration
 {
     MongoDbSettings = new MongoDbSettings
     {
-        ConnectionString = "MongoURI"
+        ConnectionString = "mongodb+srv://omarmc2011:omar123@notescluster.hiji6vb.mongodb.net/?retryWrites=true&w=majority",
+        DatabaseName = "Users"
     },
     IdentityOptionsAction = options =>
     {
@@ -93,9 +94,9 @@ builder.Services.AddAuthentication(x =>
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
-        ValidIssuer = "Https://localhost:4200",
-        ValidAudience = "Https://localhost:4200",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1!@4dst")),
+        ValidIssuer = "https://localhost:7294",
+        ValidAudience = "https://localhost:7294",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl")),
         ClockSkew = TimeSpan.Zero,
     };
 });

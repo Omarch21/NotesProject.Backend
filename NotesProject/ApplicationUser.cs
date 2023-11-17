@@ -1,24 +1,15 @@
-﻿using Microsoft.AspNetCore.Identity.MongoDB;
+﻿using AspNetCore.Identity.MongoDbCore.Models;
+using Microsoft.AspNetCore.Identity.MongoDB;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDbGenericRepository.Attributes;
 using System.ComponentModel.DataAnnotations;
 
 namespace NotesProject
 {
-    public class User : IdentityUser
+    [CollectionName("users")]
+    public class ApplicationUser : MongoIdentityUser<Guid>
     {
-        [BsonId]
-        public ObjectId id { get; set; }
-
-        [BsonElement("username")]
-        public string Username { get; set; }
-        [BsonElement("email")]
-        [EmailAddress(ErrorMessage = "Invalid Email")]
-        [Required]
-        public string Email { get; set; }
-        [BsonElement("password")]
-        [Required]
-        public string Password { get; set; }
-
+        public string FullName { get; set; } = string.Empty;
     }
 }
