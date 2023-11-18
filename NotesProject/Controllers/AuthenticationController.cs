@@ -111,8 +111,8 @@ namespace NotesProject.Controllers
                 var expires = DateTime.Now.AddHours(1);
 
                 var token = new JwtSecurityToken(
-                    issuer: "https://localhost:7294",
-                    audience: "https://localhost:7294",
+                    issuer: "https://localhost:4200",
+                    audience: "https://localhost:4200",
                     claims: claims,
                     expires: expires,
                     signingCredentials: creds

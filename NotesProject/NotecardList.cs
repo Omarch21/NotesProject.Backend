@@ -15,6 +15,7 @@ namespace NotesProject
 
         [BsonElement("notecards")]
         public List<Notecard> Notecard_list { get; set; } 
+        public string UserId { get; set; }
 
     }
 }

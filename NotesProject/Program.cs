@@ -94,8 +94,8 @@ builder.Services.AddAuthentication(x =>
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
-        ValidIssuer = "https://localhost:7294",
-        ValidAudience = "https://localhost:7294",
+        ValidIssuer = "https://localhost:4200",
+        ValidAudience = "https://localhost:4200",
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl")),
         ClockSkew = TimeSpan.Zero,
     };
@@ -115,9 +115,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseCors("NgOrigins");
+app.UseAuthentication();
 app.UseHttpsRedirection();
 app.UseAuthorization();
-app.UseAuthentication();
+
 app.MapControllers();
 
 app.Run();

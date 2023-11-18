@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace NotesProject.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ValuesController : ControllerBase
@@ -25,6 +28,8 @@ namespace NotesProject.Controllers
         {
             try
             {
+                Console.WriteLine(GetUser());
+                new_notecards.UserId = GetUser();
                 _noteCollection.InsertOne(new_notecards);
                 return Ok("Notecard inserted successfully");
             }
@@ -32,6 +37,16 @@ namespace NotesProject.Controllers
             {
                 return BadRequest($"Error: {ex.Message}");
             }
+        }
+        private string GetUser()
+        {
+            ClaimsPrincipal user = HttpContext.User;
+            Claim userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+            if(userIdClaim != null)
+            {
+                return userIdClaim.Value;
+            }
+            return null;
         }
         [HttpPost("Card")]
         public IActionResult InsertNotecard([FromBody] Notecard new_notecard, string set_id)
