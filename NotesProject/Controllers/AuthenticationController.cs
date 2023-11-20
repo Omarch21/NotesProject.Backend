@@ -1,4 +1,5 @@
 ﻿using Amazon.SecurityToken.Model;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -11,7 +12,7 @@ using System.Text;
 namespace NotesProject.Controllers
 {
     [ApiController]
-    [Route("api/v1/userauthenticate")]
+    [Route("api/authentication")]
     public class AuthenticationController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -41,7 +42,7 @@ namespace NotesProject.Controllers
 
         }
 
-
+      
 
         private async Task<RegisterResponse> RegisterAsync(RegisterRequest request)
         {
@@ -79,7 +80,37 @@ namespace NotesProject.Controllers
             }
         }
 
-       
+        [HttpGet("CheckUserLoggedIn")]
+        public async Task<IActionResult> CheckUserLoggedIn()
+        {
+            var result = await CheckUserLoggedInMessage();
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+            private async Task<LoggedInResponse> CheckUserLoggedInMessage()
+        {
+            var userid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+
+           if(userid != null && username != null)
+            {
+                return new LoggedInResponse
+                {
+                    Success = true,
+                    Message = "Logged in",
+                    LoggedInUserID = userid,
+                    LoggedInUsername = username,
+                };
+            }
+           else
+            {
+                return new LoggedInResponse
+                {
+                    Success = false,
+                    Message = "Not Logged in",
+                };
+            }
+        }
+
 
         [HttpPost]
         [Route("login")]
@@ -108,19 +139,29 @@ namespace NotesProject.Controllers
                 claims.AddRange(roleClaims);
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl"));
                 var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-                var expires = DateTime.Now.AddHours(1);
+                var expires = DateTime.Now.AddDays(1);
 
                 var token = new JwtSecurityToken(
-                    issuer: "https://localhost:4200",
-                    audience: "https://localhost:4200",
+                   // issuer: "https://localhost:4200",
+                   // audience: "https://localhost:4200",
                     claims: claims,
                     expires: expires,
                     signingCredentials: creds
                     );
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+                Response.Cookies.Append("token", tokenString, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Expires = DateTime.Now.AddDays(1),
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    IsEssential = true,
+                }); ;
 
                 return new LoginResponse
                 {
-                    AccessToken = new JwtSecurityTokenHandler().WriteToken(token),
+                    AccessToken = tokenString,
                     Message = "Login Successful",
                     Email = user?.Email,
                     Success = true,
@@ -131,6 +172,20 @@ namespace NotesProject.Controllers
                 Console.WriteLine(ex.Message);
                 return new LoginResponse { Success = false, Message = ex.Message };
             }
+        }
+        [HttpDelete("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                Response.Cookies.Delete("token");
+                return Ok(new { message = "Logout successful" });
+            }catch(Exception ex)
+            {
+                return StatusCode(500, new { message = "an error occured" });
+            }
+           
+         
         }
         
     }

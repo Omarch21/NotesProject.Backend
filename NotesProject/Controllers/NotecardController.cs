@@ -10,10 +10,10 @@ namespace NotesProject.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class ValuesController : ControllerBase
+    public class NotecardController : ControllerBase
     {
         private IMongoCollection<NotecardList> _noteCollection;
-        public ValuesController(IMongoClient client)
+        public NotecardController(IMongoClient client)
         {
             var database = client.GetDatabase("Notecards");
             _noteCollection = database.GetCollection<NotecardList>("Notecard_list");
@@ -23,7 +23,21 @@ namespace NotesProject.Controllers
         {
             return _noteCollection.Find(s => s.Name == "Test").ToList();
         }
-        [HttpPost]
+        [HttpGet("id")]
+        public IEnumerable<NotecardList> GetId(string id)
+        {
+            var result = Builders<NotecardList>.Filter.Eq(s => s.id, ObjectId.Parse(id));
+            return _noteCollection.Find(result).ToEnumerable();
+        }
+
+        [HttpGet("user")]
+        public IEnumerable<NotecardList> GetByUser(string userId)
+            {
+            return _noteCollection.Find(s => s.UserId == userId).ToList();
+            }
+
+
+            [HttpPost]
         public IActionResult CreateSet([FromBody] NotecardList new_notecards)
         {
             try
@@ -53,7 +67,7 @@ namespace NotesProject.Controllers
         {
             try
             {
-                new_notecard.id = ObjectId.GenerateNewId();
+                new_notecard.Id = ObjectId.GenerateNewId();
 
                 var filter = Builders<NotecardList>.Filter.Eq("_id", ObjectId.Parse(set_id));
 

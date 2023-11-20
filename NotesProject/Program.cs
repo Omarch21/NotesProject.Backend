@@ -39,7 +39,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddCors(options => options.AddPolicy(name: "NgOrigins",
     policy =>
     {
-        policy.WithOrigins( "http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins( "http://localhost:4200").AllowAnyMethod().AllowAnyHeader().AllowCredentials();
     }
     ));
 
@@ -84,6 +84,9 @@ builder.Services.AddAuthentication(x =>
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 
+}).AddCookie(x=>
+{
+    x.Cookie.Name = "token";
 }).AddJwtBearer(x =>
 {
     x.RequireHttpsMetadata = true;
@@ -91,13 +94,21 @@ builder.Services.AddAuthentication(x =>
     x.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        ValidateIssuer = true,
-        ValidateAudience = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
-        ValidIssuer = "https://localhost:4200",
-        ValidAudience = "https://localhost:4200",
+        //ValidIssuer = "https://localhost:4200",
+       // ValidAudience = "https://localhost:4200",
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl")),
         ClockSkew = TimeSpan.Zero,
+    };
+    x.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            context.Token = context.Request.Cookies["token"];
+            return Task.CompletedTask;
+        }
     };
 });
 

@@ -6,7 +6,7 @@ namespace NotesProject
     [BsonIgnoreExtraElements]
     public class NotecardList
     {
-        [BsonId]
+     
         public ObjectId id { get; set; }
 
         [BsonElement("name")]

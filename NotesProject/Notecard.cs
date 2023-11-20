@@ -6,7 +6,7 @@ namespace NotesProject
     public class Notecard
     {
         [BsonId]
-        public ObjectId id { get; set; }
+        public ObjectId Id { get; set; }
 
         [BsonElement("position")]
         public int Position { get; set; }
