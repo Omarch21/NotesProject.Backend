@@ -11,5 +11,8 @@ namespace NotesProject
     public class ApplicationUser : MongoIdentityUser<Guid>
     {
         public string FullName { get; set; } = string.Empty;
+        public string Token { get; set; }
+        public DateTime TokenCreated { get; set; }
+        public DateTime TokenExpires { get; set; }
     }
 }

@@ -89,7 +89,7 @@ builder.Services.AddAuthentication(x =>
     x.Cookie.Name = "token";
 }).AddJwtBearer(x =>
 {
-    x.RequireHttpsMetadata = true;
+    x.RequireHttpsMetadata = false;
     x.SaveToken = true;
     x.TokenValidationParameters = new TokenValidationParameters
     {
@@ -99,14 +99,14 @@ builder.Services.AddAuthentication(x =>
         ValidateLifetime = true,
         //ValidIssuer = "https://localhost:4200",
        // ValidAudience = "https://localhost:4200",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl")),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asflasd324fadaszzsdf567ngyfkjhnre957")),
         ClockSkew = TimeSpan.Zero,
     };
     x.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
-            context.Token = context.Request.Cookies["token"];
+            context.Token = context.Request.Cookies["X-Access-Token"];
             return Task.CompletedTask;
         }
     };

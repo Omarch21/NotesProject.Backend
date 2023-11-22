@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson.IO;
 using NotesProject.User;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace NotesProject.Controllers
@@ -71,7 +73,7 @@ namespace NotesProject.Controllers
                 return new RegisterResponse
                 {
                     Success = true,
-                    Message = "User registered successfully"
+                    Message = "Registered successfully"
                 };
             }
             catch(Exception ex)
@@ -137,31 +139,46 @@ namespace NotesProject.Controllers
                 var roles = await _userManager.GetRolesAsync(user);
                 var roleClaims = roles.Select(x => new Claim(ClaimTypes.Role, x));
                 claims.AddRange(roleClaims);
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asfl"));
-                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asflasd324fadaszzsdf567ngyfkjhnre957"));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
                 var expires = DateTime.Now.AddDays(1);
 
                 var token = new JwtSecurityToken(
                    // issuer: "https://localhost:4200",
-                   // audience: "https://localhost:4200",
+                 //  audience: "https://localhost:4200",
                     claims: claims,
                     expires: expires,
                     signingCredentials: creds
                     );
                 var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-                Response.Cookies.Append("token", tokenString, new CookieOptions
+                HttpContext.Response.Cookies.Append("X-Access-Token", tokenString,
+                new CookieOptions
                 {
+                    Expires = DateTime.Now.AddMinutes(10),
                     HttpOnly = true,
-                    Expires = DateTime.Now.AddDays(1),
                     Secure = true,
-                    SameSite = SameSiteMode.None,
                     IsEssential = true,
-                }); ;
-
+                    SameSite = SameSiteMode.None
+                });
+                var refreshToken1 = GenerateRefreshToken();
+                HttpContext.Response.Cookies.Append("X-Refresh-Token", refreshToken1.Token,
+                 new CookieOptions
+                 {
+                     Expires = refreshToken1.Expires,
+                     HttpOnly = true,
+                     Secure = true,
+                     IsEssential = true,
+                     SameSite = SameSiteMode.None
+                 });
+                user.Token = refreshToken1.Token;
+                user.TokenCreated = refreshToken1.Created;
+                user.TokenExpires = refreshToken1.Expires;
+                await _userManager.UpdateAsync(user);
+                
                 return new LoginResponse
                 {
-                    AccessToken = tokenString,
+                    AccessToken = refreshToken1.Token,
                     Message = "Login Successful",
                     Email = user?.Email,
                     Success = true,
@@ -173,17 +190,132 @@ namespace NotesProject.Controllers
                 return new LoginResponse { Success = false, Message = ex.Message };
             }
         }
+       
+        private RefreshToken GenerateRefreshToken()
+        {
+            var refreshToken = new RefreshToken()
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Expires = DateTime.Now.AddDays(1),
+                Created = DateTime.Now
+            };
+            return refreshToken;
+        }
+
+        [HttpGet("RefreshToken")]
+        public async Task<ActionResult<string>>  RefreshToken()
+        {
+           
+            var refreshToken = Request.Cookies["X-Refresh-Token"];
+            var user = _userManager.Users.Where(x => x.Token == refreshToken).FirstOrDefault();
+            if(user == null || user.TokenExpires < DateTime.Now)
+            {
+                return Unauthorized("Token is expired");
+            }
+
+                 var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(ClaimTypes.Name,user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier,user.Id.ToString())
+            };
+                var roles = await _userManager.GetRolesAsync(user);
+                var roleClaims = roles.Select(x => new Claim(ClaimTypes.Role, x));
+                claims.AddRange(roleClaims);
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("gliuosybo7433v1564dstjhljkhasdf78asflasd324fadaszzsdf567ngyfkjhnre957"));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+                var expires = DateTime.Now.AddDays(1);
+
+                var token = new JwtSecurityToken(
+                   // issuer: "https://localhost:4200",
+                 //  audience: "https://localhost:4200",
+                    claims: claims,
+                    expires: expires,
+                    signingCredentials: creds
+                    );
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            HttpContext.Response.Cookies.Append("X-Access-Token", tokenString,
+                 new CookieOptions
+                 {
+                     Expires = DateTime.Now.AddMinutes(10),
+                     HttpOnly = true,
+                     Secure = true,
+                     IsEssential = true,
+                     SameSite = SameSiteMode.None
+                 });
+            var refreshToken1 = GenerateRefreshToken();
+            HttpContext.Response.Cookies.Append("X-Refresh-Token", refreshToken1.Token,
+                new CookieOptions
+                {
+                    Expires = refreshToken1.Expires,
+                    HttpOnly = true,
+                    Secure = true,
+                    IsEssential = true,
+                    SameSite = SameSiteMode.None
+                });
+            _userManager.Users.Where(x => x.UserName == user.UserName).First().Token = refreshToken1.Token;
+            _userManager.Users.Where(x => x.UserName == user.UserName).First().TokenCreated = refreshToken1.Created;
+            _userManager.Users.Where(x => x.UserName == user.UserName).First().TokenExpires = refreshToken1.Expires;
+
+            return Ok();
+                }
+
+        //public void SetRefreshToken(RefreshToken refreshToken, ApplicationUser user)
+        //{
+        //    HttpContext.Response.Cookies.Append("X-Refresh-Token", refreshToken.Token,
+        //        new CookieOptions
+        //        {
+        //            Expires = refreshToken.Expires,
+        //            HttpOnly = true,
+        //            Secure = true,
+        //            IsEssential = true,
+        //            SameSite = SameSiteMode.None
+        //        });
+        //    _userManager.Users.Where(x => x.UserName == user.UserName).First().Token = refreshToken.Token;
+        //    _userManager.Users.Where(x => x.UserName == user.UserName).First().TokenCreated = refreshToken.Created;
+        //    _userManager.Users.Where(x => x.UserName == user.UserName).First().TokenExpires = refreshToken.Expires;
+
+        //}
+
+        //public void SetJWT(string encrypterToken)
+        //{
+        //    HttpContext.Response.Cookies.Append("X-Access-Token",encrypterToken,
+        //        new CookieOptions
+        //        {
+        //            Expires = DateTime.Now.AddMinutes(10),
+        //            HttpOnly = true,
+        //            Secure = true,
+        //            IsEssential = true,
+        //            SameSite = SameSiteMode.None
+        //        }); 
+        //}
+
+        [HttpDelete("RevokeToken/{username}")]
+        public async Task<IActionResult> RevokeToken(string username)
+        {
+           var user =  await _userManager.FindByEmailAsync(username);
+            user.Token = "";
+            await _userManager.UpdateAsync(user);
+            return Ok();
+        }
+
         [HttpDelete("logout")]
         public async Task<IActionResult> Logout()
         {
-            try
+
+            Response.Cookies.Delete("X-Access-Token", new CookieOptions
             {
-                Response.Cookies.Delete("token");
+                Expires = DateTime.Now.AddMinutes(-1),
+                   HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Secure = true,
+                IsEssential = true
+
+            }); ;
                 return Ok(new { message = "Logout successful" });
-            }catch(Exception ex)
-            {
-                return StatusCode(500, new { message = "an error occured" });
-            }
+         
            
          
         }
